@@ -1,96 +1,115 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
 
-export default function IssueDetail() {
-  const { id } = useLocalSearchParams();
-
-  // 🔧 Replace this with real data fetch later
-  const issue = {
-    title: 'Pothole near market',
-    description: 'A large pothole that’s been there for 2 weeks. Causes major traffic jams during peak hours.',
-    location: 'Sector 12, Main Road',
+export default function IssueDetails({ route }) {
+  const issue = route?.params?.issue || {
+    title: 'Pothole near school',
+    description: 'There is a large pothole near the government school causing traffic and risk to kids.',
+    location: { latitude: 12.9716, longitude: 77.5946 },
     status: 'Pending',
-    createdAt: 'April 10, 2025',
-    category: 'Road',
-    submittedBy: 'Ravi khan',
+    imageUri: null,
+    reportedAt: '2025-04-19T10:32:00Z',
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{issue.title}</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.header}>Issue Details</Text>
 
-      <View style={styles.metaSection}>
-        <Text style={styles.meta}>📍 {issue.location}</Text>
-        <Text style={styles.meta}>🗓️ {issue.createdAt}</Text>
-        <Text style={styles.meta}>👤 Submitted by: {issue.submittedBy}</Text>
-      </View>
+      <View style={styles.card}>
+        <Text style={styles.title}>{issue.title}</Text>
+        <Text style={styles.label}>Description</Text>
+        <Text style={styles.text}>{issue.description}</Text>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Category:</Text>
-        <Text style={styles.value}>{issue.category}</Text>
-      </View>
+        {issue.imageUri && (
+          <Image source={{ uri: issue.imageUri }} style={styles.image} />
+        )}
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Description:</Text>
-        <Text style={styles.value}>{issue.description}</Text>
-      </View>
+        <Text style={styles.label}>Location</Text>
+        <Text style={styles.text}>
+          Latitude: {issue.location?.latitude?.toFixed(4)}{'\n'}
+          Longitude: {issue.location?.longitude?.toFixed(4)}
+        </Text>
 
-      <View style={styles.section}>
-        <Text style={styles.label}>Status:</Text>
-        <Text style={[styles.status, issue.status === 'Pending' && styles.pending]}>
+        <Text style={styles.label}>Status</Text>
+        <Text style={[styles.status, getStatusStyle(issue.status)]}>
           {issue.status}
         </Text>
+
+        <Text style={styles.label}>Reported At</Text>
+        <Text style={styles.text}>{new Date(issue.reportedAt).toLocaleString()}</Text>
       </View>
-    </View>
+    </ScrollView>
   );
+}
+
+function getStatusStyle(status) {
+  if (status === 'Resolved') return styles.statusResolved;
+  if (status === 'In Progress') return styles.statusInProgress;
+  return styles.statusPending;
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    padding: 20,
+    backgroundColor: '#fefefe',
+  },
+  header: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 16,
+    color: '#111',
+  },
+  card: {
     backgroundColor: '#fff',
-    padding: 24,
-    paddingTop: 60,
+    padding: 18,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
     marginBottom: 12,
-  },
-  metaSection: {
-    marginBottom: 20,
-  },
-  meta: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 4,
-  },
-  section: {
-    marginBottom: 20,
+    color: '#222',
   },
   label: {
-    fontSize: 16,
+    marginTop: 10,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 6,
+    color: '#555',
   },
-  value: {
-    fontSize: 16,
-    color: '#444',
-    lineHeight: 22,
+  text: {
+    fontSize: 14,
+    color: '#333',
+    marginTop: 4,
+  },
+  image: {
+    marginVertical: 12,
+    height: 180,
+    borderRadius: 10,
+    resizeMode: 'cover',
+    width: '100%',
   },
   status: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    marginTop: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
     alignSelf: 'flex-start',
-    backgroundColor: '#d1e7dd',
-    color: '#0f5132',
   },
-  pending: {
-    backgroundColor: '#fff3cd',
-    color: '#664d03',
+  statusResolved: {
+    backgroundColor: '#c4f0c4',
+    color: '#137333',
+  },
+  statusInProgress: {
+    backgroundColor: '#fff4c2',
+    color: '#b28900',
+  },
+  statusPending: {
+    backgroundColor: '#fdecea',
+    color: '#d93025',
   },
 });

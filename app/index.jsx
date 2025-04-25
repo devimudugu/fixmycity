@@ -1,5 +1,3 @@
-// pages/LoginScreen.js (or wherever your screen is)
-
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';

@@ -1,42 +1,77 @@
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Image, ActivityIndicator, Alert } from 'react-native';
 import CustomButton from '../../components/CustomButton';
+import { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../context/AuthContext';
 
 export default function ProfileScreen() {
-  const user = {
-    name: 'Ravi Kumar',
-    email: 'ravi.kumar@example.com',
-    reportsSubmitted: 7,
-    joined: 'January 2024',
-    avatar: 'https://api.dicebear.com/7.x/shapes/png?seed=user123',
+  const { user, logout } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchProfile = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('name, avatar_url, reports_submitted, joined')
+        .eq('id', user.id)
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile(data);
+    } catch (err) {
+      console.error('Error loading profile:', err.message);
+      Alert.alert('Error', 'Could not load profile info');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchProfile();
+    }
+  }, [user]);
+
   const handleLogout = () => {
-    console.log('Logging out...');
-    // Future: Add real logout logic
+    logout();
   };
+
+  if (loading || !profile) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#666" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Image
-          source={{ uri: user.avatar }}
+          source={{ uri: profile.avatar_url }}
           style={styles.avatar}
           resizeMode="contain"
         />
         <View>
-          <Text style={styles.name}>{user.name}</Text>
+          <Text style={styles.name}>{profile.name}</Text>
           <Text style={styles.email}>{user.email}</Text>
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>Reports Submitted</Text>
-        <Text style={styles.value}>{user.reportsSubmitted}</Text>
+        <Text style={styles.value}>{profile.reports_submitted}</Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.label}>Member Since</Text>
-        <Text style={styles.value}>{user.joined}</Text>
+        <Text style={styles.value}>
+          {new Date(profile.joined).toLocaleDateString()}
+        </Text>
       </View>
 
       <View style={styles.buttonWrapper}>
@@ -52,6 +87,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 24,
     paddingTop: 60,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
