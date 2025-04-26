@@ -1,4 +1,5 @@
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -9,15 +10,31 @@ import {
   ScrollView,
 } from 'react-native';
 import { useState, useCallback } from 'react';
+import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 import CustomButton from '../../components/CustomButton';
+import { supabase } from '../lib/supabase';
 
 export default function ReportPage() {
+  const router = useRouter();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState('Pothole');
+
+  const categories = [
+    'Pothole',
+    'Traffic Light',
+    'Street Light',
+    'Road Sign',
+    'Garbage',
+    'Other',
+  ];
+
   const [imageUri, setImageUri] = useState(null);
   const [location, setLocation] = useState(null);
   const [mode, setMode] = useState('live');
@@ -64,30 +81,54 @@ export default function ReportPage() {
     }
   };
 
-  const handleSubmit = () => {
-    const finalLocation = mode === 'live' ? location : predefinedLocations[manualLocation];
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      const finalLocation = mode === 'live' ? location : predefinedLocations[manualLocation];
+      if (!title || !description || !finalLocation) {
+        Alert.alert('Missing Info', 'Please fill all fields and select a location.');
+        return;
+      }
+      const { data: { user } , error: getUserError} = await supabase.auth.getUser();
+       if(getUserError) throw getUserError;
 
-    if (!title || !description || !finalLocation) {
-      Alert.alert('Missing Info', 'Please fill all fields and select a location.');
-      return;
+      const { error: insertError } = await supabase.from('reports').insert({
+        title: title,
+        description: description,
+        user_id: user.id,
+        latitude: finalLocation.latitude,
+        longitude: finalLocation.longitude,
+        category: selectedCategory
+      });
+      if (insertError) throw insertError;
+
+      Alert.alert('Success', 'Issue reported successfully!');
+      setTitle('');
+      setDescription('');
+      setImageUri(null);
+      setManualLocation('none');
+      setMode('live');
+      router.push('/tabs/home');
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    Alert.alert('Success', 'Issue reported successfully!');
-    setTitle('');
-    setDescription('');
-    setImageUri(null);
-    setManualLocation('none');
-    setMode('live');
   };
 
-  const renderLocationText = () => {
+  const renderLocationText = useCallback(() => {
     const loc =
       mode === 'live'
         ? location
         : predefinedLocations[manualLocation] || { latitude: null, longitude: null };
 
     if (!loc || !loc.latitude || !loc.longitude) {
-      return <Text style={styles.locationText}>Location not available.</Text>;
+      return (
+        <Text style={styles.locationText}>
+        <Text>Location not available.</Text>
+        </Text>
+      );
     }
 
     return (
@@ -96,7 +137,7 @@ export default function ReportPage() {
         <Text style={styles.bold}>Longitude:</Text> {loc.longitude.toFixed(4)}
       </Text>
     );
-  };
+  }, [mode, location, manualLocation]);
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -118,6 +159,19 @@ export default function ReportPage() {
         value={description}
         onChangeText={setDescription}
       />
+
+<Text style={styles.label}>Category</Text>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={selectedCategory}
+          onValueChange={(value) => setSelectedCategory(value)}
+        >
+          {categories.map((cat) => (
+            <Picker.Item key={cat} label={cat} value={cat} />
+          ))}
+        </Picker>
+      </View>
+
 
       <Text style={styles.label}>Location</Text>
       <View style={styles.modeToggle}>
@@ -154,6 +208,11 @@ export default function ReportPage() {
       {mode === 'live' && (
         <CustomButton label="Refresh Live Location" onPress={fetchLiveLocation} />
       )}
+      {loading && (
+        <ActivityIndicator size="large" color="#007bff" />
+      )}
+      {error && <Text style={styles.error}>{error}</Text>}
+      
 
       <Text style={styles.label}>Image</Text>
       <TouchableOpacity style={styles.imageBox} onPress={pickImage}>
@@ -196,7 +255,7 @@ const styles = StyleSheet.create({
   },
   textArea: {
     height: 90,
-    textAlignVertical: 'top',
+    textAlignVertical: 'top'
   },
   modeToggle: {
     flexDirection: 'row',
@@ -256,5 +315,9 @@ const styles = StyleSheet.create({
   },
   imageText: {
     color: '#888',
+  },
+   error: {
+    color: 'red',
+    marginTop: 10,
   },
 });

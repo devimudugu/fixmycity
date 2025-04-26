@@ -1,49 +1,129 @@
-import { View, Text, StyleSheet, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Image, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import CustomButton from '../../components/CustomButton';
+import { supabase } from '../lib/supabase';
 
-export default function IssueDetails({ route }) {
-  const issue = route?.params?.issue || {
-    title: 'Pothole near school',
-    description: 'There is a large pothole near the government school causing traffic and risk to kids.',
-    location: { latitude: 12.9716, longitude: 77.5946 },
-    status: 'Pending',
-    imageUri: null,
-    reportedAt: '2025-04-19T10:32:00Z',
+export default function IssueDetails() {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+  const [issue, setIssue] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [userId, setUserId] = useState(null);
+
+
+  useEffect(() => {
+    const fetchIssue = async () => {
+      setLoading(true);
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if(userError) throw userError;
+        setUserId(user.id);
+
+        const { data, error } = await supabase
+          .from('reports')
+          .select('*')
+          .eq('id', id)
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          if (error.code === 'PGRST116') {
+            setError("Issue not found");
+          } else {
+            setError(error.message);
+          }
+        } else {
+          setIssue(data);
+        }
+
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchIssue();
+  }, [id, userId]);
+
+  const handleCloseIssue = useCallback(async () => {
+    if (!issue) return;
+    if (issue.status !== 'Resolved') {
+      Alert.alert(
+        'Confirm Close',
+        'This issue is not marked as resolved. Are you sure you want to close it?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Close', onPress: async () => { await updateIssueStatus('Closed') } },
+        ]
+      );
+    } else {
+      await updateIssueStatus('Closed');
+    }
+  }, [issue]);
+
+  const updateIssueStatus = async (newStatus) => {
+    try {
+      const { error: updateError } = await supabase.from('reports').update({ status: newStatus }).eq('id', id);
+      if (updateError) throw updateError;
+      Alert.alert('Success', 'Issue closed successfully!');
+      router.push('/tabs/home');
+    } catch (err) {
+      console.error(err);
+      setError(err.message);
+    }
   };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.header}>Issue Details</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.title}>{issue.title}</Text>
-        <Text style={styles.label}>Description</Text>
-        <Text style={styles.text}>{issue.description}</Text>
+      {loading ? (
+        <ActivityIndicator size="large" color="#007bff" />
+      ) : error === "Issue not found" ? (
+        <Text style={styles.error}>Issue not found</Text>
+      ) : error === "You are not authorized to view this issue." ? (
+        <Text style={styles.error}>You are not authorized to view this issue.</Text>
+      ) : issue ? (
+        <>
+          <View style={styles.card}>
+            <Text style={styles.title}>{issue.title}</Text>
+            <Text style={styles.label}>Description</Text>
+            <Text style={styles.text}>{issue.description}</Text>
+            <Text style={styles.label}>Category</Text>
+            <Text style={styles.text}>{issue.category}</Text>
+            {issue.image_url && (
+              <Image source={{ uri: issue.image_url }} style={styles.image} />
+            )}
 
-        {issue.imageUri && (
-          <Image source={{ uri: issue.imageUri }} style={styles.image} />
-        )}
+            <Text style={styles.label}>Location</Text>
+            <Text style={styles.text}>
+              Latitude: {issue.latitude?.toFixed(4)}{'\n'}
+              Longitude: {issue.longitude?.toFixed(4)}
+            </Text>
 
-        <Text style={styles.label}>Location</Text>
-        <Text style={styles.text}>
-          Latitude: {issue.location?.latitude?.toFixed(4)}{'\n'}
-          Longitude: {issue.location?.longitude?.toFixed(4)}
-        </Text>
-
-        <Text style={styles.label}>Status</Text>
-        <Text style={[styles.status, getStatusStyle(issue.status)]}>
-          {issue.status}
-        </Text>
-
-        <Text style={styles.label}>Reported At</Text>
-        <Text style={styles.text}>{new Date(issue.reportedAt).toLocaleString()}</Text>
-      </View>
+            <Text style={styles.label}>Status</Text>
+            <Text style={[styles.status, getStatusStyle(issue.status)]}>
+              {issue.status}
+            </Text>
+            <Text style={styles.label}>Reported At</Text>
+            <Text style={styles.text}>{new Date(issue.reported_at).toLocaleString()}</Text>
+          </View>
+          {issue.status !== 'Closed' && (
+            <CustomButton label="Close Issue" onPress={handleCloseIssue} />
+          )}
+        </>
+      ) : (
+        <Text style={styles.error}>{error}</Text>
+      )}
     </ScrollView>
   );
 }
 
 function getStatusStyle(status) {
-  if (status === 'Resolved') return styles.statusResolved;
-  if (status === 'In Progress') return styles.statusInProgress;
+  if (status === 'Resolved') return styles.statusResolved
+  if (status === 'In Progress') return styles.statusInProgress
   return styles.statusPending;
 }
 
@@ -66,6 +146,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 3,
+    marginBottom:50
   },
   title: {
     fontSize: 20,
@@ -111,5 +192,9 @@ const styles = StyleSheet.create({
   statusPending: {
     backgroundColor: '#fdecea',
     color: '#d93025',
+  },
+  error: {
+    color: 'red',
+    marginTop: 10,
   },
 });
