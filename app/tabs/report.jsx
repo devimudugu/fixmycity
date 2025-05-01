@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 import CustomButton from '../../components/CustomButton';
 import { supabase } from '../lib/supabase';
+import * as FileSystem from 'expo-file-system';
 
 export default function ReportPage() {
   const router = useRouter();
@@ -68,40 +69,103 @@ export default function ReportPage() {
     }, [mode])
   );
 
-  const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission Required', 'Access to photos is needed.');
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true });
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
+  const handleCameraPick = async () => {
+    try {
+      const { granted } = await ImagePicker.requestCameraPermissionsAsync();
+      if (!granted) return Alert.alert('Permission Denied', 'Camera access is required.');
+  
+      const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.8 });
+      if (!result.canceled) setImageUri(result.assets[0].uri);
+    } catch (err) {
+      console.error('Camera error:', err);
+      Alert.alert('Error', 'Something went wrong while opening the camera.');
     }
   };
+  
+  const handleGalleryPick = async () => {
+    try {
+      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!granted) return Alert.alert('Permission Denied', 'Gallery access is required.');
+  
+      const result = await ImagePicker.launchImageLibraryAsync({ allowsEditing: true, quality: 0.8 });
+      if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        setImageUri(uri);
+        console.log(uri);
+      }
+    } catch (err) {
+      console.error('Gallery error:', err);
+      Alert.alert('Error', 'Something went wrong while accessing the gallery.');
+    }
+  };
+  
+  const pickImage = () => {
+    Alert.alert(
+      'Choose Image Source',
+      'Select where you want to pick the image from:',
+      [
+        { text: 'Camera', onPress: () => handleCameraPick() },
+        { text: 'Gallery', onPress: () => handleGalleryPick() },
+        { text: 'Cancel', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  };
+  
+  
 
   const handleSubmit = async () => {
     try {
       setLoading(true);
       const finalLocation = mode === 'live' ? location : predefinedLocations[manualLocation];
+  
       if (!title || !description || !finalLocation) {
         Alert.alert('Missing Info', 'Please fill all fields and select a location.');
         return;
       }
-      const { data: { user } , error: getUserError} = await supabase.auth.getUser();
-       if(getUserError) throw getUserError;
+  
+      const { data: { user }, error: getUserError } = await supabase.auth.getUser();
+      if (getUserError) throw getUserError;
+  
+      let imagePath = null;
+  
+      if (imageUri) {
+        const fileExtension = imageUri.split('.').pop();
+        const filename = `report_${Date.now()}.${fileExtension || 'jpg'}`;
+        const fileData = await FileSystem.readAsStringAsync(imageUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+  
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('report-images') // your bucket name
+          .upload(filename, Buffer.from(fileData, 'base64'), {
+            contentType: 'image/jpeg',
+            upsert: true,
+          });
+  
+        if (uploadError) throw uploadError;
+  
+        const { data: publicUrlData } = supabase
+          .storage
+          .from('report-images')
+          .getPublicUrl(filename);
 
+        imagePath = publicUrlData.publicUrl;
+
+      }
+  
       const { error: insertError } = await supabase.from('reports').insert({
-        title: title,
-        description: description,
+        title,
+        description,
         user_id: user.id,
         latitude: finalLocation.latitude,
         longitude: finalLocation.longitude,
-        category: selectedCategory
+        category: selectedCategory,
+        image_url: imagePath,
       });
+  
       if (insertError) throw insertError;
-
+  
       Alert.alert('Success', 'Issue reported successfully!');
       setTitle('');
       setDescription('');
@@ -116,6 +180,7 @@ export default function ReportPage() {
       setLoading(false);
     }
   };
+  
 
   const renderLocationText = useCallback(() => {
     const loc =

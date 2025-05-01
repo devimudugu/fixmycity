@@ -12,11 +12,14 @@
       "supportsTablet": true
     },
     "android": {
-      "permissions":["ACCESS_FINE_LOCSTION"],
+      "permissions": [
+        "ACCESS_FINE_LOCSTION"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.saathwik834.fixmycity"
     },
     "web": {
       "bundler": "metro",
@@ -37,6 +40,14 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "da987244-cce6-46c9-a54e-79a781500580"
+      }
     }
   }
 }

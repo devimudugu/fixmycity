@@ -4,6 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { Buffer } from 'buffer';
+global.Buffer = global.Buffer || Buffer;
+
 
 
 export default function TabsLayout() {
