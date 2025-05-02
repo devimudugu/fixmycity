@@ -1,6 +1,6 @@
 import {
   View,
-  Text,
+  Text, SectionList,
   FlatList,
   StyleSheet,
   TouchableOpacity,
@@ -8,13 +8,13 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 
 export default function MaintainerDashboard() {
   const router = useRouter();
-  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [groupedReports, setGroupedReports] = useState({});
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
 
@@ -25,12 +25,15 @@ export default function MaintainerDashboard() {
       if (error) {
         setError(error.message);
       } else {
-        const sortedReports = data.sort((a, b) => {
-          const categoryA = a.category ?? '';
-          const categoryB = b.category ?? '';
-          return categoryA.localeCompare(categoryB);
-        });
-        setReports(sortedReports);
+        const grouped = data.reduce((acc, item) => {
+          const category = item.category || 'No Category';
+          if (!acc[category]) {
+            acc[category] = [];
+          }
+          acc[category].push(item);
+          return acc;
+        }, {});
+          setGroupedReports(grouped);
       }
     } catch (err) {
       setError(err.message);
@@ -59,6 +62,36 @@ export default function MaintainerDashboard() {
     </TouchableOpacity>
   );
 
+  const renderSectionHeader = ({ section: { title } }) => (
+    <Text style={styles.sectionHeader}>{title}</Text>
+  );
+  const sections = useMemo(() => {
+    return Object.entries(groupedReports)
+      .sort(([keyA], [keyB]) => {
+          if (keyA === 'Other' || keyA === "No Category") {
+              return 1;
+          }
+          if (keyB === 'Other' || keyB === "No Category") {
+              return -1;
+          }
+        return keyA.localeCompare(keyB);
+        }
+       ).map(([title, data]) => ({ title, data }));
+  }, [groupedReports]);
+  
+   const renderEmpty = useMemo(() => {
+      if(!loading && Object.keys(groupedReports).length === 0){
+          return (
+          <View>
+              <Text>No issues found</Text>
+          </View>
+          )
+      }else{
+          return null;
+      }
+   },[loading, groupedReports])
+  
+  
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Maintainers Dashboard</Text>
@@ -67,15 +100,17 @@ export default function MaintainerDashboard() {
       ) : error ? (
         <Text style={styles.error}>{error}</Text>
       ) : (
-        <FlatList
-          data={reports}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          ListEmptyComponent={<Text>No issues found</Text>}
-        />
+          <SectionList
+              sections={sections}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              renderSectionHeader={renderSectionHeader}
+              stickySectionHeadersEnabled
+              ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+              ListEmptyComponent={renderEmpty}
+              contentContainerStyle={styles.contentContainer}
+          />
       )}
     </View>
   );
@@ -111,5 +146,18 @@ const styles = StyleSheet.create({
   error: {
     color: 'red',
     marginTop: 10,
+  },
+  sectionHeader: {
+    backgroundColor: '#f0f0f0',
+    color: '#333',
+    padding: 10,
+    fontSize: 18,
+    fontWeight: 'bold',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+  },
+  contentContainer: {
+      paddingBottom: 20,
   },
 });

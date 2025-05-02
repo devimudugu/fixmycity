@@ -24,9 +24,7 @@ export default function LoginScreen() {
           onPress={() => router.push('/register')} 
           style={styles.button}
         />
-                <Link href="/maintainer/login" style={styles.button}>
-          <Text style={styles.buttonText}>Maintainers login</Text>
-        </Link>
+        <Link href="/maintainer/login">Maintainers login</Link>
       </View>
     </View>
   );
@@ -60,14 +58,8 @@ const styles = StyleSheet.create({
   button: {
     width: '80%',
   },
-   buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    backgroundColor: '#007AFF',
-    padding: 10,
-  },
+
+
   orText: {
     fontSize: 14,
     color: '#555',
