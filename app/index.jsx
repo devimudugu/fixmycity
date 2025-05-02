@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, Link } from 'expo-router';
 import CustomButton from '../components/CustomButton';
+
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -23,6 +24,9 @@ export default function LoginScreen() {
           onPress={() => router.push('/register')} 
           style={styles.button}
         />
+                <Link href="/maintainer/login" style={styles.button}>
+          <Text style={styles.buttonText}>Maintainers login</Text>
+        </Link>
       </View>
     </View>
   );
@@ -55,6 +59,14 @@ const styles = StyleSheet.create({
   },
   button: {
     width: '80%',
+  },
+   buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    backgroundColor: '#007AFF',
+    padding: 10,
   },
   orText: {
     fontSize: 14,

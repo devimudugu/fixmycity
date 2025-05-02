@@ -1,28 +1,35 @@
-import { View, Text, TextInput, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { useState } from 'react';
 import CustomButton from '../components/CustomButton';
-import { supabase } from './lib/supabase';
 import { useAuth } from './context/AuthContext';
 import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const {signup} = useAuth();
+  const { signup } = useAuth();
 
   const handleRegister = async () => {
-    if (!email || !password || !name) {
+    if (!email || !password || !confirmPassword || !name) {
       Alert.alert('Missing fields', 'Please fill all the fields.');
       return;
     }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Password mismatch', 'The passwords do not match. Please try again.');
+      return;
+    }
+
     try {
       await signup(email, password);
     } catch (error) {
       Alert.alert('Signup Error', error.message);
     }
-    // Don't insert profile yet
+
     Alert.alert(
       'Confirm Your Email',
       'We’ve sent a confirmation link to your email. Please verify your account before logging in.'
@@ -30,8 +37,6 @@ export default function RegisterScreen() {
   
     router.replace('/'); // redirect to login
   };
-  
-  
 
   return (
     <View style={styles.container}>
@@ -56,8 +61,20 @@ export default function RegisterScreen() {
         value={password}
         onChangeText={setPassword}
         style={styles.input}
-        secureTextEntry
+        secureTextEntry={!showPassword}
       />
+
+      <TextInput
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        style={styles.input}
+        secureTextEntry={!showPassword}
+      />
+
+      <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+        <Text style={styles.toggleText}>{showPassword ? 'Hide Passwords' : 'Show Passwords'}</Text>
+      </TouchableOpacity>
 
       <CustomButton label="Register" onPress={handleRegister} />
     </View>
@@ -80,6 +97,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f1f1f1',
     borderRadius: 8,
     padding: 12,
+    marginBottom: 16,
+  },
+  toggleText: {
+    color: '#007BFF',
+    textAlign: 'right',
     marginBottom: 16,
   },
 });
