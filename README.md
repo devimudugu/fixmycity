@@ -1,4 +1,16 @@
 # Welcome to your Expo app 👋
+This project is a collaborative effort to build a mobile app using Expo and React Native. It was originally created by satwik834 and is now being developed by a team of contributors.
+**Team Members**
+Satwik – Project initiator,Database Architect and backend Infra
+Devi – Visual Design , Interface Implementation and feature development
+Meghana - User authentication and onboarding
+Bhargav - Citezen and maintainer module
+
+**Group Goals**
+- Build a user-friendly app for reporting city issues
+- Implement file-based routing and modular components
+- Add features like image uploads, geolocation, and issue tracking
+- Maintain clean code and collaborative workflows
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
